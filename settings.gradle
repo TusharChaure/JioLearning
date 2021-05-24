@@ -1,0 +1,2 @@
+rootProject.name = "JioLearningProject"
+include ':app'
