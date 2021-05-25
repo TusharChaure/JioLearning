@@ -16,17 +16,20 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String DEFAULT_MEDIA_URI = "https://storage.googleapis.com/exoplayer-test-media-1/mkv/android-screens-lavf-56.36.100-aac-avc-main-1280x720.mkv";
+    private static final String DEFAULT_MEDIA_URI = "https://media.specialolympics.org/resources/video/Champions-Together-Youth-Video-2.5min.mp4?_ga=2.79042065.46941699.1621962741-1588985075.1621962741";
     private static ArrayList<String> Aduri = new ArrayList<>();
     private static ArrayList<String> Adid = new ArrayList<>();
     private static ArrayList<Integer> timeOffset = new ArrayList<>();
     private static ArrayList<String> temp = new ArrayList<>();
+    private static int sum = 0;
+    private static int counter = 0;
     @Nullable private PlayerView playerView;
     @Nullable private SimpleExoPlayer player;
 
@@ -55,24 +58,28 @@ public class MainActivity extends AppCompatActivity {
     public void vmap_parsing() throws ParserConfigurationException {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-
         StrictMode.setThreadPolicy(policy);
+
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document doc = null;
         try {
-            URL url = new URL("https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vmap&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpremidpostoptimizedpod&cmsid=496&vid=short_onecue&correlator=");
+
+            URL url = new URL("https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vmap&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpremidpostpod&cmsid=496&vid=short_onecue&correlator=");
             doc = db.parse(new InputSource(url.openStream()));
             doc.getDocumentElement().normalize();
             printNode( doc.getChildNodes() );
-            Log.d( "LOSS", "temp " + temp );
 
         } catch (Exception e) {
             Log.e("LOSS", "error" + e);
         }
 
-        Log.d( "LOSS", "id " + Adid);
-        //Extracting AdTagURI
+        for (int i = 0; i < Adid.size(); i++) {
+            while (i < Adid.size() - 1 && Adid.get(i).matches(Adid.get(i+1)))
+                i++;
+            sum++;
+        }
+
         NodeList nodes = doc.getElementsByTagName("vmap:AdSource");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element element = (Element) nodes.item(i);
@@ -80,15 +87,12 @@ public class MainActivity extends AppCompatActivity {
             Element line = (Element) title.item(0);
             Aduri.add(getCharacterDataFromElement(line));
         }
-        Log.d( "LOSS", "Aduri " + Aduri);
-        Log.d( "LOSS", "TimeOffSet " + timeOffset);
 
     }
 
     private void vast_parsing() {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-
         StrictMode.setThreadPolicy(policy);
 
         for(int i=0;i<Aduri.size();i++){
@@ -99,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
                 Document doc = db.parse(new InputSource(url.openStream()));
                 doc.getDocumentElement().normalize();
                 printNode1( doc.getChildNodes(), i);
-                Log.d( "LOSS", "temp " + temp );
 
             } catch (Exception e) {
                 Log.e("LOSS", "error" + e);
@@ -140,17 +143,21 @@ public class MainActivity extends AppCompatActivity {
                             timeOffset.add(-1);
                         }
                         else{
-                            Log.d( "LOSS", "time "+  node.getAttributes().getNamedItem( "timeOffset" ).getNodeValue().toString());
-                            timeOffset.add(Integer.parseInt(node.getAttributes().getNamedItem( "timeOffset" ).getNodeValue().replaceAll("[\\D]", "")));
+                            int time = Integer.parseInt(node.getAttributes().getNamedItem( "timeOffset" ).getNodeValue().replaceAll("[\\D]", ""));
+                            if(time >= 100000){
+                                time = time - 40000;
+                                timeOffset.add(time);
+                            }
+                            else
+                                timeOffset.add(Integer.parseInt(node.getAttributes().getNamedItem( "timeOffset" ).getNodeValue().replaceAll("[\\D]", "")));
+
                         }
                         Adid.add(node.getAttributes().getNamedItem( "breakId" ).getNodeValue());
                     }
                 }
                 printNode(node.getChildNodes());
             }
-
         }
-
     }
 
     private static void printNode1(NodeList nList, int j) {
@@ -168,58 +175,83 @@ public class MainActivity extends AppCompatActivity {
                 }
                 printNode1(node.getChildNodes(), j);
             }
-
         }
-
     }
 
     private void initializePlayer() {
 
-        for(int i=0;i<Adid.size();i++){
-            if(i==0){
-                if(Adid.get(i).matches("preroll")){
-                    MediaItem preRollAd =
-                            new MediaItem.Builder()
-                                    .setUri(temp.get(i))
-                                    .setClipStartPositionMs(timeOffset.get(i))
-                                    .build();
-                    player.addMediaItem(preRollAd);
+                int i;
+                int k =1;
+                int x = Collections.frequency(Adid, Adid.get(0));
+                int z = Collections.frequency(Adid, Adid.get(Adid.size()-1));
+
+                for(i=0;i<x;i++){
+                    if(Adid.get(counter).matches("preroll")){
+                        MediaItem preRollAd =
+                                new MediaItem.Builder()
+                                        .setUri(temp.get(counter))
+                                        .setClipStartPositionMs(timeOffset.get(counter))
+                                        .build();
+                        player.addMediaItem(preRollAd);
+                        counter++;
+                    }
                 }
-            }
-            if(i==1){
+
                 MediaItem contentStart =
                         new MediaItem.Builder()
                                 .setUri(DEFAULT_MEDIA_URI)
-                                .setClipEndPositionMs(timeOffset.get(i))
+                                .setClipEndPositionMs(timeOffset.get(counter))
                                 .build();
                 player.addMediaItem(contentStart);
-                if(Adid.get(1).matches( "midroll-1" )){
-                    MediaItem mid =
-                            new MediaItem.Builder()
-                                    .setUri(temp.get(i))
-                                    .build();
-                    player.addMediaItem(mid);
+
+                for(i=i;i<sum+x-1;i++){
+                    if(Adid.get(counter).matches( "midroll-" + k )) {
+                        int n = Collections.frequency(Adid, Adid.get(counter));
+                        while(n>0){
+                            MediaItem mid =
+                                    new MediaItem.Builder()
+                                            .setUri(temp.get(counter))
+                                            .build();
+                            player.addMediaItem(mid);
+                            counter++;
+                            n--;
+                        }
+                        int m = counter;
+                        counter = counter -1;
+                        int y =timeOffset.get(m);
+                        if(y!=-1){
+                            MediaItem contentEnd =
+                                    new MediaItem.Builder()
+                                            .setUri(DEFAULT_MEDIA_URI)
+                                            .setClipStartPositionMs(timeOffset.get(counter))
+                                            .setClipEndPositionMs(timeOffset.get(m))
+                                            .build();
+                            player.addMediaItem(contentEnd);
+                            counter++;
+                        }
+                        else{
+                            MediaItem contentEnd =
+                                    new MediaItem.Builder()
+                                            .setUri(DEFAULT_MEDIA_URI)
+                                            .setClipStartPositionMs(timeOffset.get(counter))
+                                            .build();
+                            player.addMediaItem(contentEnd);
+                            counter++;
+                        }
+                    }
+                    k++;
                 }
-                MediaItem contentEnd =
-                        new MediaItem.Builder()
-                                .setUri(DEFAULT_MEDIA_URI)
-                                .setClipStartPositionMs(timeOffset.get(i))
-                                .build();
-                player.addMediaItem(contentEnd);
-            }
-            if(i==2){
 
-                if(Adid.get(2).matches( "postroll" )){
-                    MediaItem post =
-                            new MediaItem.Builder()
-                                    .setUri(temp.get(i))
-                                    .build();
-                    player.addMediaItem(post);
+                for(int j=0;j<z;j++) {
+                    if (Adid.get(Adid.size() - 1).matches("postroll")) {
+                        MediaItem post =
+                                new MediaItem.Builder()
+                                        .setUri(temp.get(counter))
+                                        .build();
+                        player.addMediaItem(post);
+                        i++;
+                    }
                 }
-            }
-
-        }
-
 
         player.prepare();
         player.play();
