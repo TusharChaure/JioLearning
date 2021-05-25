@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         playerView = findViewById(R.id.idExoPlayerVIew);
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
 
         initializePlayer();
 
-}
+    }
 
     public void vmap_parsing() throws ParserConfigurationException {
 
@@ -59,16 +60,16 @@ public class MainActivity extends AppCompatActivity {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document doc = null;
-            try {
-                URL url = new URL("https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vmap&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpremidpostoptimizedpod&cmsid=496&vid=short_onecue&correlator=");
-                doc = db.parse(new InputSource(url.openStream()));
-                doc.getDocumentElement().normalize();
-                printNode( doc.getChildNodes() );
-                Log.d( "LOSS", "temp " + temp );
+        try {
+            URL url = new URL("https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vmap&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpremidpostoptimizedpod&cmsid=496&vid=short_onecue&correlator=");
+            doc = db.parse(new InputSource(url.openStream()));
+            doc.getDocumentElement().normalize();
+            printNode( doc.getChildNodes() );
+            Log.d( "LOSS", "temp " + temp );
 
-            } catch (Exception e) {
-                Log.e("LOSS", "error" + e);
-            }
+        } catch (Exception e) {
+            Log.e("LOSS", "error" + e);
+        }
 
         Log.d( "LOSS", "id " + Adid);
         //Extracting AdTagURI
@@ -174,40 +175,51 @@ public class MainActivity extends AppCompatActivity {
 
     private void initializePlayer() {
 
-        if(Adid.get(0).matches("preroll")){
-            MediaItem preRollAd =
-                    new MediaItem.Builder()
-                            .setUri(temp.get(0))
-                            .setClipStartPositionMs(timeOffset.get(0))
-                            .build();
-            player.addMediaItem(preRollAd);
+        for(int i=0;i<Adid.size();i++){
+            if(i==0){
+                if(Adid.get(i).matches("preroll")){
+                    MediaItem preRollAd =
+                            new MediaItem.Builder()
+                                    .setUri(temp.get(i))
+                                    .setClipStartPositionMs(timeOffset.get(i))
+                                    .build();
+                    player.addMediaItem(preRollAd);
+                }
+            }
+            if(i==1){
+                MediaItem contentStart =
+                        new MediaItem.Builder()
+                                .setUri(DEFAULT_MEDIA_URI)
+                                .setClipEndPositionMs(timeOffset.get(i))
+                                .build();
+                player.addMediaItem(contentStart);
+                if(Adid.get(1).matches( "midroll-1" )){
+                    MediaItem mid =
+                            new MediaItem.Builder()
+                                    .setUri(temp.get(i))
+                                    .build();
+                    player.addMediaItem(mid);
+                }
+                MediaItem contentEnd =
+                        new MediaItem.Builder()
+                                .setUri(DEFAULT_MEDIA_URI)
+                                .setClipStartPositionMs(timeOffset.get(i))
+                                .build();
+                player.addMediaItem(contentEnd);
+            }
+            if(i==2){
+
+                if(Adid.get(2).matches( "postroll" )){
+                    MediaItem post =
+                            new MediaItem.Builder()
+                                    .setUri(temp.get(i))
+                                    .build();
+                    player.addMediaItem(post);
+                }
+            }
+
         }
-        MediaItem contentStart =
-                new MediaItem.Builder()
-                        .setUri(DEFAULT_MEDIA_URI)
-                        .setClipEndPositionMs(timeOffset.get(1))
-                        .build();
-        player.addMediaItem(contentStart);
-        if(Adid.get(1).matches( "midroll-1" )){
-            MediaItem mid =
-                    new MediaItem.Builder()
-                            .setUri(temp.get(1))
-                            .build();
-            player.addMediaItem(mid);
-        }
-        MediaItem contentEnd =
-                new MediaItem.Builder()
-                        .setUri(DEFAULT_MEDIA_URI)
-                        .setClipStartPositionMs(timeOffset.get(1))
-                        .build();
-        player.addMediaItem(contentEnd);
-        if(Adid.get(2).matches( "postroll" )){
-            MediaItem post =
-                    new MediaItem.Builder()
-                            .setUri(temp.get(2))
-                            .build();
-            player.addMediaItem(post);
-        }
+
 
         player.prepare();
         player.play();
