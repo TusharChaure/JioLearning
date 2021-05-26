@@ -23,6 +23,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String VMAP_URL = "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vmap&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpremidpostlongpod&cmsid=496&vid=short_tencue&correlator=";
     private static final String DEFAULT_MEDIA_URI = "https://media.specialolympics.org/resources/video/Champions-Together-Youth-Video-2.5min.mp4?_ga=2.79042065.46941699.1621962741-1588985075.1621962741";
     private static ArrayList<String> Aduri = new ArrayList<>();
     private static ArrayList<String> Adid = new ArrayList<>();
@@ -55,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    //Parsing VMAP file
     public void vmap_parsing() throws ParserConfigurationException {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -65,10 +67,10 @@ public class MainActivity extends AppCompatActivity {
         Document doc = null;
         try {
 
-            URL url = new URL("https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vmap&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpremidpostpod&cmsid=496&vid=short_onecue&correlator=");
+            URL url = new URL(VMAP_URL);
             doc = db.parse(new InputSource(url.openStream()));
             doc.getDocumentElement().normalize();
-            printNode( doc.getChildNodes() );
+            vmap_printNode( doc.getChildNodes() );
 
         } catch (Exception e) {
             Log.e("LOSS", "error" + e);
@@ -80,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
             sum++;
         }
 
+        //Extracting AdTagURI (vast urls) from vmap file
         NodeList nodes = doc.getElementsByTagName("vmap:AdSource");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element element = (Element) nodes.item(i);
@@ -89,7 +92,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-
+    
+    //Parsing VAST File
     private void vast_parsing() {
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -102,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
                 DocumentBuilder db = dbf.newDocumentBuilder();
                 Document doc = db.parse(new InputSource(url.openStream()));
                 doc.getDocumentElement().normalize();
-                printNode1( doc.getChildNodes(), i);
+                vast_printNode( doc.getChildNodes(), i);
 
             } catch (Exception e) {
                 Log.e("LOSS", "error" + e);
@@ -128,7 +132,8 @@ public class MainActivity extends AppCompatActivity {
         return "";
     }
 
-    private static void printNode(NodeList nList) {
+    //Extracting timeOffset & breakId Attributes from vmap file
+    private static void vmap_printNode(NodeList nList) {
 
         for(int i=0;i<nList.getLength();i++) {
             Node node = nList.item(i);
@@ -155,12 +160,13 @@ public class MainActivity extends AppCompatActivity {
                         Adid.add(node.getAttributes().getNamedItem( "breakId" ).getNodeValue());
                     }
                 }
-                printNode(node.getChildNodes());
+                vmap_printNode(node.getChildNodes());
             }
         }
     }
 
-    private static void printNode1(NodeList nList, int j) {
+    //Extracting MediaFile content (Ads url) from vast file
+    private static void vast_printNode(NodeList nList, int j) {
 
         for(int i=0;i<nList.getLength();i++) {
             Node node = nList.item(i);
@@ -173,11 +179,12 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
-                printNode1(node.getChildNodes(), j);
+                vast_printNode(node.getChildNodes(), j);
             }
         }
     }
 
+    //Creating final playlist for Exoplayer
     private void initializePlayer() {
 
                 int i;
@@ -185,6 +192,7 @@ public class MainActivity extends AppCompatActivity {
                 int x = Collections.frequency(Adid, Adid.get(0));
                 int z = Collections.frequency(Adid, Adid.get(Adid.size()-1));
 
+                //Creating playlist for preroll ads
                 for(i=0;i<x;i++){
                     if(Adid.get(counter).matches("preroll")){
                         MediaItem preRollAd =
@@ -204,6 +212,7 @@ public class MainActivity extends AppCompatActivity {
                                 .build();
                 player.addMediaItem(contentStart);
 
+                //Creating playlist for midroll ads
                 for(i=i;i<sum+x-1;i++){
                     if(Adid.get(counter).matches( "midroll-" + k )) {
                         int n = Collections.frequency(Adid, Adid.get(counter));
@@ -242,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
                     k++;
                 }
 
+                //Creating playlist for postroll ads
                 for(int j=0;j<z;j++) {
                     if (Adid.get(Adid.size() - 1).matches("postroll")) {
                         MediaItem post =
